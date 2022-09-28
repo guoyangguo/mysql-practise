@@ -24,7 +24,7 @@ MySQL表约束
 
 外键约束 
 
-非空约束  
+非空约束  字段值不能为空
 
 唯一性约束 对应的值必须唯一，但是可以为空，不能作为外键（因为外键不能为空），可以有多个满足唯一性约束的column
 
@@ -101,7 +101,7 @@ mysql分页有必要加order by 某个字段吗 听说如果不加的话 查询�
 
 外键 从表中用来引用主表中的数据的公共字段
 
-外键约束：如果删除主表中的一条数据，这条数据在从表中被引用，那么MySQL会错误，从而保证关联数据的完整性
+外键约束：如果删除主表中的一条数据，这条数据在从表中被引用，那么MySQL会错误，从而保证关联数据的完整性，先删除从表的数据，在删除主表的关联数据
 
 插入的时候需要先插入主表的数据，否则从表的外键找不到references
 
@@ -109,13 +109,34 @@ mysql分页有必要加order by 某个字段吗 听说如果不加的话 查询�
 
 如何在业务层面进行关联数据的一致性：
 
-
+提供一个保证数据一致性的业务代码
 
 【强制】不得使用外键与级联，一切外键概念必须在应用层解决。 说明：（概念解释）学生表中的student_id是主键，那么成绩表中的student_id则为外键。如果更新学生表中的student_id，同时触发成绩表中的student_id更新，即为级联更新。外键与级联更新适用于单机低并发，不适合分布式、高并发集群；级联更新是强阻塞，存在数据库更新风暴的风险；外键影响数据库的插入速度。
 
 外键约束带来的开销还包括锁开销，比如向子表中添加一条数据，外键约束会让innodb检查对应的父表。这里会需要对父表进行加锁操作，来确保这条记录不会在事务完成之前被删除。这就带来了额外的锁开销。甚至死锁。
 
 外键是怎么带来死锁的：
+
+有A B两个table，A为主表，B为从表，有如下过程
+
+``` sql
+-- 事务1 
+-- step1 对从表B的一条数据进行更新，会触发外键约束，将主表A id=1的record加上共享锁
+update B set B.num = 2 where a_id = 1
+-- step2 发现 id = 1 存在事务2的共享锁，等待
+update A set A.num = 3 where id = 1
+-- 
+-- 事务2
+-- step1 对从表B的一条数据进行更新，会触发外键约束，将主表A id=1的record加上共享锁
+update B set B.num = 2 where a_id = 1
+-- step2 发现 id = 1 存在事务1的共享锁，等待
+update A set A.num = 3 where id = 1
+
+-- 以上过程会形容事务1和事务2之间的相互等待，导致死锁
+
+```
+
+
 
 
 
@@ -145,7 +166,7 @@ Join 连接类型
 
 Inner join 内连接 ：只返回 符合条件的记录
 
-inner join join cross join 都叫内连接
+inner join， join， cross join 都叫内连接
 
 Outer join 外连接：返回某一个表中的所有记录和另一个表中的满足连接条件的记录
 
@@ -183,7 +204,93 @@ RIGHT JOIN 表名 AS b
 ON (a.字段名称=b.字段名称);
 ```
 
+HAVING 必须和group by 一起使用，
 
+如何正确的使用 HAVING和 WHERE 
+
+对于有连接的查询，where是先筛选出符合where条件的语句，再进行连接查询
+
+having 对查询后的结果集进行分组过滤
+
+
+
+count(*) 和 count(字段)
+
+count(*)： 统计有多少条记录
+
+count(*): 统计有多少不为空的字段值
+
+count(1) 统计表的行数，在MySQL中count(*)与count(1)是一样的
+
+count(字段)，如果字段是主键则count(字段更快)
+
+
+
+
+
+时间函数：
+
+YEAR（date）：获取 date 中的年。
+
+MONTH（date）：获取 date 中的月。
+
+DAY（date）：获取 date 中的日。
+
+HOUR（date）：获取 date 中的小时。
+
+MINUTE（date）：获取 date 中的分。
+
+SECOND（date）：获取 date 中的秒。
+
+EXTRACT(hour from create_time)：从create_time 中获取小时
+
+计算时间的函数：
+
+DATE_ADD(create_time,INTERVAL -1 YEAR): 在crete_time的基础上减去一年
+
+DATE_ADD(create_time,INTERVAL 1 YEAR): 在create_time的基础上增加一年
+
+LAST_DAY(create_time): 获取create_time 所在月的最后一天
+
+
+
+CURDATE() 回去当前日期
+
+DAYOFWEEK(CURDATE()) 获取当前日期是周几
+
+
+
+CASE 语法
+
+``` sql
+CASE 表达式 WHEN 值1 THEN 表达式1 [ WHEN 值2 THEN 表达式2] ELSE 表达式m END
+```
+
+ 数学函数
+
+取整函数
+
+向上取整 CEIL(X) 和 CEILING(X)：返回大于等于 X 的最小 INT 型整数。
+
+向下取整 FLOOR(X)：返回小于等于 X 的最大 INT 型整数。
+
+舍入函数 ROUND(X,D)：X 表示要处理的数，D 表示保留的小数位数，处理的方式是四舍五入。ROUND(X) 表示保留 0 位小数。
+
+绝对值函数 ABS()
+
+求余函数()
+
+
+
+常用的字符串函数有 4 个。
+
+CONCAT（s1,s2,...）：表示把字符串 s1、s2……拼接起来，组成一个字符串。
+
+CAST（表达式 AS CHAR）：表示将表达式的值转换成字符串。
+
+CHAR_LENGTH（字符串）：表示获取字符串的长度。
+
+SPACE（n）：表示获取一个由 n 个空格组成的字符串。
 
 
 
