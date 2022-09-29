@@ -1,5 +1,10 @@
 # MySQL
 
+数据库的三范式
+
+1. 属性不可分割，每一个属性都是不可分割的原子项，
+2. 
+
 MySQL float double的精度问题是因为MySQL底层的存储都是通过二进制存储的，如果尾数不是0或5那么就无法用一个二进制的数值来精确的表达，所以只能四舍五入取一个近似值，同一个数值，使用double得到的最终数值误差比较小是因为double是8位的，精度更高。
 
 
@@ -10,19 +15,19 @@ DECIMAL类型 DECIMAL(5,2)的意思是 整数部分的长度不能超过（5-2�
 
 
 
-Char 固定长度字符串类型 需要预定长度，如果太短会超过长度，如果太长会浪费存储空间,超过指定长度就会报错
+Char 固定长度字符串类型 需要预定长度，如果太短会超过长度，如果太长会浪费存储空间,超过指定长度就会报错;
 
-Varchar 可变长度字符串类型，varchar定义的时候也需要设置最大值，但是只要不超过最大值都是按照实际的长度大小进行存储的;超过指定长度就会报错
+Varchar 可变长度字符串类型，varchar定义的时候也需要设置最大值，但是只要不超过最大值都是按照实际的长度大小进行存储的;超过指定长度就会报错;
 
-Text 系统会自动按照实际长度进行存储，不需要设置范围,因为实际长度不固定，所以不能作为主键
+Text 系统会自动按照实际长度进行存储，不需要设置范围,因为实际长度不固定，所以不能作为主键,也无法作为索引；
 
 MySQL表约束
 
-默认约束 添加默认值
+默认约束：添加默认值
 
-主键约束 主键不能为空，主键的值必须唯一，主键可以作为外键，一张表只能有一个主键
+主键约束： 主键不能为空，主键的值必须唯一，主键可以作为外键，一张表只能有一个主键
 
-外键约束 
+外键约束： 
 
 非空约束  字段值不能为空
 
@@ -77,7 +82,7 @@ LIMIT 起始点,行数
 
 GROUP BY： 用来对数据进行分组，通常跟聚合函数一起使用
 
-HAVING: 用来筛选查询结果
+HAVING: 用来筛选查询结果，必须和Group By 一起使用
 
 ORDER BY 字段 DESC|ASC: 对查询结果进行排序，首先根据第一个字段进行排序，然后字段值相同的在根据第二个字段进行排序
 
@@ -87,7 +92,7 @@ ON DUPLICATE: 主键约束或者唯一约束受到破坏时的操作逻辑
 INSERT INTO demo.goodsmaster SELECT *FROM demo.goodsmaster1 as a ON DUPLICATE KEY UPDATE barcode = a.barcode,goodsname=a.goodsname;
 ```
 
-mysql分页有必要加order by 某个字段吗 听说如果不加的话 查询第二页数据的时候可能会查询到第一页的数据 如果加order by,可能会影响性能，这该如何取舍呢？
+mysql 分页有必要加order by 某个字段吗 听说如果不加的话 查询第二页数据的时候可能会查询到第一页的数据 如果加order by,可能会影响性能，这该如何取舍呢？
 
 
 
@@ -445,5 +450,217 @@ create temporary table <tablename>
 
 
 
+视图 view
+
+```sql
+-- 创建视图
+create [or replace] view <viewname>
+[(字段列表)]
+as 查询语句;	
+
+-- 修改视图
+alter view <viewname>
+as 查询语句;
+
+-- 查看视图
+describe <viewname>
+```
+
+视图是以查询语句建立的，如果视图与基础表之间没有一一对应的关系，那么视图就只能进行查看		 	 	
+
+使用视图的好处：
+
+1. 视图是将一段查询语句存储到数据库中，在需要的时候将视图看作一张表，进行查询
+
+2. 视图简化了复杂的查询语句，可读性更好，也更方便维护
+3. 视图本身不存储数据，不占用存储资源
+4. 视图具有隔离性，因为视图是将查询语句进行封装，避免了直接操作数据源的表
+
+使用视图的缺点：
+
+1. 增加维护的成本：视图与源表之间具有依赖性，当源表结构发生变动时，视图也需要进行对应的修改
+
+视图会使用索引吗？
+
+视图的本质是一段查询语句，如果源表的创建索引，视图的查询语句中使用到了该字段，就会使用索引；
+
+视图与临时表有什么区别
+
+1. 作用范围：临时表是作用于当前连接的，当前连接断开，临时表也会销毁，具有隔离性，不同连接之间互相不影响；视图是持久化的，只有当前连接拥有对应的权限就可以进行对应的操作。
+2. 功能特性：视图是用来简化查询的，本身不存储数据，不占用存储空间；临时表是用来存储中间数据的，会占用内存或者磁盘空间（取决于使用的是内存临时表（指定engine=memory）还是磁盘临时表）
+
+视图操作
+
+```SQL
+-- 创建 demo.student 视图
+CREATE OR REPLACE VIEW demo.view_demo_student (name , class_id , create_time) AS
+    SELECT 
+        a.name, a.class_id, a.create_time
+    FROM
+        demo.student AS a;
+-- 视图查询 
+select * from demo.view_demo_student;
+
+-- 向视图中插入数据 需要视图与基础表之间字段之间存在对应关系 
+insert into demo.view_demo_student (name,class_id,create_time) values ('赵六',4,now());
+
+-- 查看基础表的数据 
+select * from demo.student;
+
+-- 更新视图的数据 更新失败，因为 视图中没有id字段
+update demo.view_demo_student as a set a.name = '赵6' where a.id = 6; 
+
+-- 更新视图数据 
+UPDATE demo.view_demo_student AS a 
+SET 
+    a.name = '赵6'
+WHERE
+    a.name = '赵六';
+
+-- 查看视图数据与基础表数据 
+select * from demo.view_demo_student;
+
+select * from demo.student;
+
+-- 修改视图 
+alter view demo.view_demo_student
+as select * from demo.student;
+
+-- 查看视图
+describe demo.view_demo_student;
+
+select * from demo.view_demo_student;
+
+-- 删除视图 
+drop view demo.view_demo_student;
+
+show variables like '%safe%';
+```
+
+存储过程的使用
+
+1. 存储过程是将某个操做的一系列的SQL语句定义好，存储在MySQL服务端，在需要用的时候向服务端发出call命令进行调用
+
+   ``` SQL
+   -- 创建存储过程 
+   delimiter //
+   create procedure get_scores (in class_id int, out scores int)
+   begin 
+    select sum(a.score) into scores from demo.course a ; 
+   end
+   //
+   delimiter ;
+   
+   -- 删除存储过程 
+   drop procedure get_scores;
+   
+   -- 查看存储过程 
+   show create procedure get_scores;
+   
+   -- 调用存储过程
+   call get_scores(1,@scores);
+   
+   -- 获取存储过程运行的结果
+   select @scores;
+   ```
+
+   存储程序分为2种，存储过程和存储函数
+
+   存储函数
+
+   创建函数的语法
+
+   ``` SQL
+   create function <funcname>(参数) returns 数据类型 函数体
+   ```
+
+   函数与存储过程的不同之处
+
+   1. 存储过程可以没有返回值，存储函数不行，必须有返回
+   2. 存储过程可以通过call命令进行调用，存储函数不行
+   3. 存储函数可以在select 语句中使用，存储过程不行
+   4. 存储过程可以对表的结构进行修改，甚至可以删除表但是存储函数不行
+
+条件处理语句
+
+```SQL
+DECLARE 处理方式 HANDLER FOR 问题 操作；
+```
+
+游标：游标是MySQL中对结果集操作的一种方式，游标可以获取结果集中的前一条后一条的数据，也可以直接跳转到某一条的数据。
+
+使用的游标的方式
+
+``` SQL
+1. 声明游标
+declare cursorname cursor for 查询语句;
+2. 打开游标
+open cursorname;
+3. 使用游标操作结果集中的数据
+fetch corsorname into 变量列表;
+4. 关闭游标
+close cursor;
+```
+
+游标使用完一定要及时的关闭，因为使用游标会损耗系统资源，如果没有及时关闭，游标会保留到存储程序执行结束。
+
+游标的使用
+
+```SQL
+create database if not exists demo;
+
+create table if not exists demo.test (
+ id int primary key,
+ quant int 
+);
+
+insert into demo.test(id,quant) values(1,100);
+insert into demo.test(id,quant) values(2,101);
+insert into demo.test(id,quant) values(3,102);
+insert into demo.test(id,quant) values(4,103);
+
+-- 创建存储过程
+delimiter //
+create procedure demo.test_pro ()
+begin
+  -- 声明变量进行操作 
+  declare v_id int;
+  declare v_quant int;
+  declare done int DEFAULT FALSE;
+
+  -- 声明游标 
+  declare  test_cursor cursor for select * from demo.test ;
+  -- 声明异常处理事件 
+  declare continue handler for NOT FOUND set done = true;
+  -- 打开游标
+  open test_cursor;
+  -- 使用游标
+  fetch test_cursor into v_id,v_quant;
+    repeat
+    if (v_id MOD 2=0) then update demo.test a set a.quant = a.quant+1 where a.id = v_id;
+    else update demo.test a set a.quant = a.quant+2 where a.id = v_id;
+    end if;
+    
+    fetch test_cursor into  v_id,v_quant;
+  until done end repeat;
+  -- 关闭游标
+  close test_cursor;
+end 
+//
+delimiter ;
+
+show create procedure demo.test_pro;
+
+call demo.test_pro();
+
+select * from demo.test;
+
+drop procedure demo.test_pro;
+
+```
 
 
+
+触发器 
+
+触发器的优点
