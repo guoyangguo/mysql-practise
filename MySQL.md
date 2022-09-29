@@ -1,5 +1,10 @@
 # MySQL
 
+数据库的三范式
+
+1. 属性不可分割，每一个属性都是不可分割的原子项，
+2. 
+
 MySQL float double的精度问题是因为MySQL底层的存储都是通过二进制存储的，如果尾数不是0或5那么就无法用一个二进制的数值来精确的表达，所以只能四舍五入取一个近似值，同一个数值，使用double得到的最终数值误差比较小是因为double是8位的，精度更高。
 
 
@@ -10,19 +15,19 @@ DECIMAL类型 DECIMAL(5,2)的意思是 整数部分的长度不能超过（5-2�
 
 
 
-Char 固定长度字符串类型 需要预定长度，如果太短会超过长度，如果太长会浪费存储空间,超过指定长度就会报错
+Char 固定长度字符串类型 需要预定长度，如果太短会超过长度，如果太长会浪费存储空间,超过指定长度就会报错;
 
-Varchar 可变长度字符串类型，varchar定义的时候也需要设置最大值，但是只要不超过最大值都是按照实际的长度大小进行存储的;超过指定长度就会报错
+Varchar 可变长度字符串类型，varchar定义的时候也需要设置最大值，但是只要不超过最大值都是按照实际的长度大小进行存储的;超过指定长度就会报错;
 
-Text 系统会自动按照实际长度进行存储，不需要设置范围,因为实际长度不固定，所以不能作为主键
+Text 系统会自动按照实际长度进行存储，不需要设置范围,因为实际长度不固定，所以不能作为主键,也无法作为索引；
 
 MySQL表约束
 
-默认约束 添加默认值
+默认约束：添加默认值
 
-主键约束 主键不能为空，主键的值必须唯一，主键可以作为外键，一张表只能有一个主键
+主键约束： 主键不能为空，主键的值必须唯一，主键可以作为外键，一张表只能有一个主键
 
-外键约束 
+外键约束： 
 
 非空约束  字段值不能为空
 
@@ -77,7 +82,7 @@ LIMIT 起始点,行数
 
 GROUP BY： 用来对数据进行分组，通常跟聚合函数一起使用
 
-HAVING: 用来筛选查询结果
+HAVING: 用来筛选查询结果，必须和Group By 一起使用
 
 ORDER BY 字段 DESC|ASC: 对查询结果进行排序，首先根据第一个字段进行排序，然后字段值相同的在根据第二个字段进行排序
 
@@ -87,7 +92,7 @@ ON DUPLICATE: 主键约束或者唯一约束受到破坏时的操作逻辑
 INSERT INTO demo.goodsmaster SELECT *FROM demo.goodsmaster1 as a ON DUPLICATE KEY UPDATE barcode = a.barcode,goodsname=a.goodsname;
 ```
 
-mysql分页有必要加order by 某个字段吗 听说如果不加的话 查询第二页数据的时候可能会查询到第一页的数据 如果加order by,可能会影响性能，这该如何取舍呢？
+mysql 分页有必要加order by 某个字段吗 听说如果不加的话 查询第二页数据的时候可能会查询到第一页的数据 如果加order by,可能会影响性能，这该如何取舍呢？
 
 
 
@@ -445,5 +450,511 @@ create temporary table <tablename>
 
 
 
+视图 view
 
+```sql
+-- 创建视图
+create [or replace] view <viewname>
+[(字段列表)]
+as 查询语句;	
+
+-- 修改视图
+alter view <viewname>
+as 查询语句;
+
+-- 查看视图
+describe <viewname>
+```
+
+视图是以查询语句建立的，如果视图与基础表之间没有一一对应的关系，那么视图就只能进行查看		 	 	
+
+使用视图的好处：
+
+1. 视图是将一段查询语句存储到数据库中，在需要的时候将视图看作一张表，进行查询
+
+2. 视图简化了复杂的查询语句，可读性更好，也更方便维护
+3. 视图本身不存储数据，不占用存储资源
+4. 视图具有隔离性，因为视图是将查询语句进行封装，避免了直接操作数据源的表
+
+使用视图的缺点：
+
+1. 增加维护的成本：视图与源表之间具有依赖性，当源表结构发生变动时，视图也需要进行对应的修改
+
+视图会使用索引吗？
+
+视图的本质是一段查询语句，如果源表的创建索引，视图的查询语句中使用到了该字段，就会使用索引；
+
+视图与临时表有什么区别
+
+1. 作用范围：临时表是作用于当前连接的，当前连接断开，临时表也会销毁，具有隔离性，不同连接之间互相不影响；视图是持久化的，只有当前连接拥有对应的权限就可以进行对应的操作。
+2. 功能特性：视图是用来简化查询的，本身不存储数据，不占用存储空间；临时表是用来存储中间数据的，会占用内存或者磁盘空间（取决于使用的是内存临时表（指定engine=memory）还是磁盘临时表）
+
+视图操作
+
+```SQL
+-- 创建 demo.student 视图
+CREATE OR REPLACE VIEW demo.view_demo_student (name , class_id , create_time) AS
+    SELECT 
+        a.name, a.class_id, a.create_time
+    FROM
+        demo.student AS a;
+-- 视图查询 
+select * from demo.view_demo_student;
+
+-- 向视图中插入数据 需要视图与基础表之间字段之间存在对应关系 
+insert into demo.view_demo_student (name,class_id,create_time) values ('赵六',4,now());
+
+-- 查看基础表的数据 
+select * from demo.student;
+
+-- 更新视图的数据 更新失败，因为 视图中没有id字段
+update demo.view_demo_student as a set a.name = '赵6' where a.id = 6; 
+
+-- 更新视图数据 
+UPDATE demo.view_demo_student AS a 
+SET 
+    a.name = '赵6'
+WHERE
+    a.name = '赵六';
+
+-- 查看视图数据与基础表数据 
+select * from demo.view_demo_student;
+
+select * from demo.student;
+
+-- 修改视图 
+alter view demo.view_demo_student
+as select * from demo.student;
+
+-- 查看视图
+describe demo.view_demo_student;
+
+select * from demo.view_demo_student;
+
+-- 删除视图 
+drop view demo.view_demo_student;
+
+show variables like '%safe%';
+```
+
+存储过程的使用
+
+1. 存储过程是将某个操做的一系列的SQL语句定义好，存储在MySQL服务端，在需要用的时候向服务端发出call命令进行调用
+
+   ``` SQL
+   -- 创建存储过程 
+   delimiter //
+   create procedure get_scores (in class_id int, out scores int)
+   begin 
+    select sum(a.score) into scores from demo.course a ; 
+   end
+   //
+   delimiter ;
+   
+   -- 删除存储过程 
+   drop procedure get_scores;
+   
+   -- 查看存储过程 
+   show create procedure get_scores;
+   
+   -- 调用存储过程
+   call get_scores(1,@scores);
+   
+   -- 获取存储过程运行的结果
+   select @scores;
+   ```
+
+   存储程序分为2种，存储过程和存储函数
+
+   存储函数
+
+   创建函数的语法
+
+   ``` SQL
+   create function <funcname>(参数) returns 数据类型 函数体
+   ```
+
+   函数与存储过程的不同之处
+
+   1. 存储过程可以没有返回值，存储函数不行，必须有返回
+   2. 存储过程可以通过call命令进行调用，存储函数不行
+   3. 存储函数可以在select 语句中使用，存储过程不行
+   4. 存储过程可以对表的结构进行修改，甚至可以删除表但是存储函数不行
+
+条件处理语句
+
+```SQL
+DECLARE 处理方式 HANDLER FOR 问题 操作；
+```
+
+游标：游标是MySQL中对结果集操作的一种方式，游标可以获取结果集中的前一条后一条的数据，也可以直接跳转到某一条的数据。
+
+使用的游标的方式
+
+``` SQL
+1. 声明游标
+declare cursorname cursor for 查询语句;
+2. 打开游标
+open cursorname;
+3. 使用游标操作结果集中的数据
+fetch corsorname into 变量列表;
+4. 关闭游标
+close cursor;
+```
+
+游标使用完一定要及时的关闭，因为使用游标会损耗系统资源，如果没有及时关闭，游标会保留到存储程序执行结束。
+
+游标的使用
+
+```SQL
+create database if not exists demo;
+
+create table if not exists demo.test (
+ id int primary key,
+ quant int 
+);
+
+insert into demo.test(id,quant) values(1,100);
+insert into demo.test(id,quant) values(2,101);
+insert into demo.test(id,quant) values(3,102);
+insert into demo.test(id,quant) values(4,103);
+
+-- 创建存储过程
+delimiter //
+create procedure demo.test_pro ()
+begin
+  -- 声明变量进行操作 
+  declare v_id int;
+  declare v_quant int;
+  declare done int DEFAULT FALSE;
+
+  -- 声明游标 
+  declare  test_cursor cursor for select * from demo.test ;
+  -- 声明异常处理事件 
+  declare continue handler for NOT FOUND set done = true;
+  -- 打开游标
+  open test_cursor;
+  -- 使用游标
+  fetch test_cursor into v_id,v_quant;
+    repeat
+    if (v_id MOD 2=0) then update demo.test a set a.quant = a.quant+1 where a.id = v_id;
+    else update demo.test a set a.quant = a.quant+2 where a.id = v_id;
+    end if;
+    
+    fetch test_cursor into  v_id,v_quant;
+  until done end repeat;
+  -- 关闭游标
+  close test_cursor;
+end 
+//
+delimiter ;
+
+show create procedure demo.test_pro;
+
+call demo.test_pro();
+
+select * from demo.test;
+
+drop procedure demo.test_pro;
+
+```
+
+
+
+触发器 
+
+使用触发器的好处：
+
+1. 触发器可以保证关联数据的完整性，不会存在遗忘的情况
+2. 触发器可以记录操作日志
+
+触发器的缺点：带来数据库的维护成本，因为多了需要关注点。
+
+```SQL
+-- 触发器的使用
+-- 创建触发器
+create trigger <triggersname> {before|after} [insert|update|delete] on <tablename> for each row <expression>;
+-- 查看触发器
+show triggers;
+-- 删除触发器
+drop trigger <triggername>;
+-- 使用案例，在学生表插入信息，同时更新课程表
+
+-- 创建触发器
+ delimiter //
+ CREATE 
+    TRIGGER  demo_insert_course
+ AFTER INSERT ON demo.student FOR EACH ROW 
+    BEGIN 
+     update demo.class a set a.number = a.number +1 where a.id =  new.class_id ;
+    END
+//
+delimiter ;
+-- 查看触发器
+show triggers;
+
+select * from demo.class;
+insert into demo.class(name)values('107班');
+
+-- 插入学生数据，观察触发器是否执行
+insert into demo.student(name,class_id) values ('黄梦凯',1);
+
+select * from student;
+select * from demo.class;
+```
+
+MySQL 的用户角色权限管理
+
+```SQL
+create database if not exists demo;
+
+CREATE TABLE IF NOT EXISTS demo.student (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(25),
+    class_id INT NOT NULL,
+    leader_id INT NOT NULL
+);
+
+describe demo.student;
+
+SELECT 
+    *
+FROM
+    demo.student;
+
+insert into demo.student(name,class_id,leader_id) values('郭国阳',1,2);
+
+CREATE TABLE IF NOT EXISTS demo.tearcher (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(25),
+    department_id INT NOT NULL,
+    leader_id INT NOT NULL
+);
+
+describe demo.tearcher;
+
+insert into demo.tearcher(name,department_id,leader_id) values('张三',2,1);
+
+CREATE TABLE IF NOT EXISTS demo.department (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(25)
+);
+
+describe demo.department;
+
+insert into demo.department(name) values('教务处'),('语文组'),('数学组');
+
+select * from demo.department;
+
+use demo;
+show tables;
+
+-- 数据库用户权限管理
+-- 创建角色
+-- create role 角色名称>
+-- 在MySQL中创建角色之后，默认是没有激活
+set global activate_all_roles_on_login=ON;
+
+
+-- 删除角色
+-- drop  role 角色名称 
+
+-- 给角色授权
+-- grant 权限 on 表名 to 角色名
+ 
+-- 查看角色权限
+-- show grants for 角色名
+
+-- 创建用户，可以不指定密码，但是不建议，无密码登陆不安全
+-- create user username [identified by password]
+
+-- 给用户授权 
+-- grant 角色名称 to 用户名称
+
+-- 也可以直接将表的权限直接授给用户
+
+-- 查看用户权限
+show grants for username;
+
+-- 删除用户
+drop user username;
+
+-- 尽量不要在应用层数据库的root用户，因为root用户的密码一旦泄露，就存在很大的风险
+
+-- eg. 创建校长 老师 学生三个角色
+create role 'schoolmaster';
+create role 'tearcher';
+create role 'student'@'localhost';
+-- create role 'schoolmaster'@'%'
+-- 开始权限
+set global activate_all_roles_on_login=ON;
+
+-- 给角色授权
+grant all privileges on demo.* to 'schoolmaster';
+show grants for 'schoolmaster';
+
+grant select on demo.tearcher to 'tearcher';
+grant select ,update,insert on demo.student to 'tearcher';
+show grants for 'tearcher';
+
+grant select on demo.tearcher to 'student'@'localhost';
+show grants for 'student'@'localhost';
+
+-- 创建用户
+-- 校长
+create user 'xiaozhang' identified by 'xiaozhang';
+create user 'laoshi' identified by 'laoshi';
+create user 'guoyang' identified by 'guoyang';
+
+-- 给用户赋予角色
+grant 'schoolmaster' to 'xiaozhang';
+grant 'tearcher' to 'laoshi';
+grant 'student'@'localhost' to 'guoyang';
+
+-- 查看用户权限
+show grants for 'guoyang';
+
+-- 删除用户
+drop user 'guoyang';
+```
+
+
+
+MySQL日志
+
+日志种类
+
+1. 通用查询日志
+2. 慢查询日志
+3. 二进制日志
+4. 错误日志
+5. 中继日志
+6.  重做日志
+7. 回滚日志
+
+```SQL
+-- MySQL日志日志
+-- 通用查询日志a
+-- 慢查询日志
+-- 错误日志
+
+-- 二进制日志 bin log
+-- 中继日志 relay log 
+-- 重做日志 redo log
+-- 回滚日志 undo log
+
+
+-- 通用查询日志
+-- 通用查询日志的状态和文件路径
+show variables like '%general%';
+-- 默认情况下通用查询日志是关闭的，因为开启通用查询日志后，会记录所有的连接起始的SQL操作，会消耗系统资源和占用磁盘空间，但能还原问题的场景
+-- 开启通用查询日志
+set global general_log = ON;
+-- 通用查询日志文件会不断的追加，导致日志文件越来越大，所以需要定期的对日志文件进行备份
+-- 备份过程 
+-- 1.首先关闭通用查询日志 set global general_log = OFF;
+-- 2.备份日志文件 将日志文件拷贝到备份目录
+-- 3.删除当前文件
+-- 4.开启通用日志查询  set global general_log = ON;
+
+-- 慢查询日志
+-- 慢查询日志是记录SQL执行时间超过指定值的日志
+-- 慢查询日志信息是通过*/support-files/my.conf配置文件来配置的，也可以通过SQL命令进行修改，但是通过配置文件修改需要重启MySQL服务
+
+-- 表示开启慢查询日志，系统将会对慢查询进行记录
+-- slow-query-log=1 
+ 
+-- 表示慢查询日志的名称是"GJTECH-PC-slow.log"
+-- slow_query_log_file="GJTECH-PC-slow.log" 
+
+-- 通过慢查询日志可以发现运行比较慢的SQL,发现系统问题，从而进行优化
+
+
+-- 错误日志
+-- 错误日志记录MySQL服务本身的运行信息，服务的启动 停止过程中的诊断信息，包含错误和提示
+
+-- 二进制日志 
+-- 二进制日志主要来记录数据库的更新事件，比如：创建数据库 更新数据花费的时长；而且二进制日志具有延续性，可以利用bin log 进行数据恢复和数据同步
+-- 查看二进制日志
+-- 1. 查看当前正在写的bin log
+show master status;
+
+-- 2. 查看所有的bin log
+show binary logs;
+
+-- 3. 查看bin log中所有数据的事件
+-- show binlog events in biglog_filename
+show binlog events in 'binlog.000002';
+
+-- 刷新bin log
+-- 刷新bin log将关闭服务器正在写的bin log，并重新生成一个bin log 文件进入写操作，新的bin log文件名会在前一个文件名后缀+1
+
+-- bin log主要的作用是可以用来恢复数据
+-- 可以用 mysqlbiglog -start-position=xxx --stop-position=xxx binlong_filename | mysql -u username -p password
+
+-- 删除 bin log
+-- 删除bin log 日志之前 一定要进行数据备份 
+
+-- 删除比指定文件编号小的 bin log
+purge master logs to 'binlog.000002';
+
+-- 删除所有的bin log，并且重新从编号1开始新增bin log文件
+reset master;
+
+-- 通过 bin log 进行数据库恢复
+
+-- 1. 模拟数据
+CREATE TABLE demo.backup (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    operator VARCHAR(50) NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT NOW(),
+    update_time DATETIME NOT NULL DEFAULT NOW()
+);
+
+insert into demo.backup (operator) values ('郭国阳');
+
+select * from demo.backup;
+
+-- 2. 备份当前数据
+-- 对demo做整库备份
+-- mysqldump -u root -p demo> db_demo_back.sql
+
+-- 3. 
+
+-- 4. 新增一条数据
+insert into demo.backup (operator) values ('黄婉秋');
+
+-- 5. 假设数据库服务崩溃，从备份文件中恢复数据
+-- 首先查看当前MySQL服务使用的bin log文件，确定正在使用的bin log文件
+show binary logs;
+-- 查看当前bin log正在写位置，与恢复后的bin log 位置进行对比
+show master status;
+--  模拟MySQL服务崩溃，手动删除 db demo
+drop database demo;
+-- 新建db demo进行数据恢复
+create database demo;
+-- 根据备份文件进行数据恢复 
+-- mysql -u root -p demo < db_demo_back.sql;
+-- 查看恢复后的数据
+select * from demo.backup;
+-- 6.根据bin log 恢复备份与宕机之间丢失的数据
+show binary logs;
+-- 首先查看bin log event 确定丢失数据的position
+show binlog events in 'binlog.000002';
+-- 从bin log指定位置恢复数据
+-- mysqlbinlog --start-position=4141 --stop-position=4296 'binlog.000002'
+-- 查看恢复后的数据
+select * from demo.backup;
+
+
+
+-- 中继日志 relay log
+-- 中继日志 只存在于MySQL主从服务的从服务器上，主要作用是用来将从主服务器上读取的bin log日志写到relay log中，在从relay log中同步到从服务器的数据中，完成主从服务之间的数据同步
+-- 可以用mysqlbinlog 工具查看
+
+-- 回滚日志 undo log
+
+
+
+```
 
